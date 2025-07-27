@@ -1,22 +1,28 @@
-FROM eclipse-temurin:21-jdk
+# We're no longer using openjdk:17-slim as a base due to several unpatched vulnerabilities.
+# The results from basing off of alpine are a smaller (by 47%) and faster (by 17%) image.
+# Even with bash installed.     -Corbe
+FROM alpine:latest
 
-# Server is in /srv
-WORKDIR /srv
+# Environment variables
+ENV MC_VERSION="latest" \
+    PAPER_BUILD="latest" \
+    EULA="false" \
+    MC_RAM="" \
+    JAVA_OPTS=""
 
-# These are all the directories that contain data, prefixed with the workdir /srv
-VOLUME [ "/srv/world", "/srv/world_nether", "/srv/world_the_end" ]
+COPY papermc.sh .
+RUN apk update \
+    && apk add libstdc++ \
+    && apk add openjdk21-jre \
+    && apk add bash \
+    && apk add wget \
+    && apk add jq \
+    && mkdir /papermc
 
-# Copy & run download script to download server binaries
-COPY ./scripts/download.sh /tmp/download.sh
-RUN chmod +x /tmp/download.sh && /tmp/download.sh
+# Start script
+CMD ["bash", "./papermc.sh"]
 
-# Copy server files
-COPY . /srv
-RUN ls /srv/plugins && sleep 10
-
-# Copy & run variable replacement script
-COPY ./scripts/replace.sh /tmp/replace.sh
-RUN chmod +x /tmp/replace.sh && /tmp/replace.sh
-
-# Start server
-ENTRYPOINT chmod +x /srv/scripts/start.sh && /srv/scripts/start.sh
+# Container setup
+EXPOSE 25565/tcp
+EXPOSE 25565/udp
+VOLUME /papermc
